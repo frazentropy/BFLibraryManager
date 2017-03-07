@@ -1,54 +1,19 @@
-#include <string>
-#include <iostream>
-#include <vector>
-#include <exception>
-
-// FLTK headers
 #include <FL/Fl.H>
 #include <FL/Fl_Window.H>
-#include <FL/Fl_Box.H>
-#include <FL/Fl_Shared_Image.H>
-#include <FL/Fl_JPEG_Image.H>
-#include <FL/fl_ask.H>
 #include <FL/Fl_Menu_Bar.H>
+#include <FL/Fl_Box.H>
+#include <FL/fl_ask.H>
+#include <FL/Fl_Color_Chooser.H>
+#include <FL/Fl_File_Chooser.H>
+#include <cctype>
+#include <iostream>
+#include <vector>
 
 using namespace std;
-////////////
-// Widgets
-////////////
-Fl_Window *win;
-Fl_Menu_Bar *menubar;
-
-
-// ///////////
-// CALLBACKS
-// ///////////
-void QuitCB(Fl_Widget* w, void* p) { win->hide(); }
-void AddPublicationCB(Fl_Widget* w, void* view);
-void ListAllCB(Fl_Widget* w, void* p) {} 
-void CheckOutCB(Fl_Widget* w, void* p) {}
-void CheckInCB(Fl_Widget* w, void* p) {}
-
-// ////////
-// MENU
-// ////////
-Fl_Menu_Item menuitems[] = {
-	{ "&File", 0, 0, 0, FL_SUBMENU },
-		{ "&Quit", FL_ALT + 'q', (Fl_Callback *)QuitCB  },
-		{0},
-	{ "&Publication", 0, 0, 0, FL_SUBMENU },
-		{ "&Add", 0, (Fl_Callback*)AddPublicationCB },
-		{ "List All", 0, (Fl_Callback*)ListAllCB },
-		{ "Check Out", 0, (Fl_Callback*)CheckOutCB },
-		{ "Check In", 0, (Fl_Callback*)CheckInCB },
-		{0},
-	{0}
-};
-
+// Classes
 // /////////////////////////////////////
 //    A G E   G E N R E   M E D I A
 // /////////////////////////////////////
-
 class Age {
   public:
     Age(int val) : value(val) { }
@@ -221,7 +186,7 @@ string Publication::to_string() {
   }
   return pub;
 }
- 
+
 // /////////////////////////////////////
 //            L I B R A R Y
 // /////////////////////////////////////
@@ -300,71 +265,20 @@ void Library::easter_egg() {
 //              V I E W
 // /////////////////////////////////////
 
-class View {
-public:
-	View(Library* lib) : library(lib) { }
-		string get_menu();
-		string get_publication_list();
-		string get_patron_list();
-		string get_age_list();
-		string get_genre_list();
-		string get_media_list();
-		string get_help();
-		Library* library;
-private:
+class View : public Fl_Box {
+  public:
+    //View(Library& lib) : library(lib) { }
+    View(Library& lib, int X, int Y, int W, int H)
+		: library(lib), Fl_Box(X, Y, W, H) { }
+    //string get_menu();
+    string get_publication_list();
+    string get_patron_list();
+    string get_age_list();
+    string get_genre_list();
+    string get_media_list();
+    string get_help();
+    Library& library;
 };
-
-string View::get_menu() {
-    string menu = R"(
-=========================
-Library Management System
-=========================
-
-Publications
-------------
-(1) Add publication
-(2) List all publications
-(3) Check out publication
-(4) Check in publication
-
-Patrons
--------
-(5) Add patron
-(6) List all patrons
-
-Utility
--------
-(9) Help
-(0) Exit
-
-Command?
-)";
-    return menu;
-}
-
-string View::get_publication_list() {
-  string list = R"(
-----------------------------
-List of Library Publications
-----------------------------
-)";
-  for (int i=0; i<library->number_of_publications(); ++i) {
-    list += std::to_string(i) + ") " + library->publication_to_string(i) + '\n';
-  }
-  return list;
-}
-
-string View::get_patron_list() {
-  string list = R"(
----------------
-List of Patrons
----------------
-)";
-  for (int i=0; i<library->number_of_patrons(); ++i) {
-    list += std::to_string(i) + ") " + library->patron_to_string(i) + '\n';
-  }
-  return list;
-}
 
 string View::get_genre_list() {
   string list = "";
@@ -388,208 +302,45 @@ string View::get_age_list() {
   return list;
 }
 
+string View::get_publication_list() {
+  string list = R"(
+----------------------------
+List of Library Publications
+----------------------------
+)";
+  for (int i=0; i<library.number_of_publications(); ++i) {
+    list += std::to_string(i) + ") " + library.publication_to_string(i) + '\n';
+  }
+  return list;
+}
+
+string View::get_patron_list() {
+  string list = R"(
+---------------
+List of Patrons
+---------------
+)";
+  for (int i=0; i<library.number_of_patrons(); ++i) {
+    list += std::to_string(i) + ") " + library.patron_to_string(i) + '\n';
+  }
+  return list;
+}
+
 string View::get_help() {
   return "This isn't rocket surgery ...";
 }
 
+// Widgets
+Fl_Window *win;
+Fl_Menu_Bar *menubar;
+View *view;
 
-// /////////////////////////////////////
-//          C O N T R O L L E R
-// /////////////////////////////////////
-
-class Controller {
-  public:
-    Controller (Library& lib, View& view) : library(lib), view(view) { }
-    void cli();
-    void gui();
-    void execute_cmd(int cmd);
-  private:
-    int get_int(string prompt, int max_int);
-    Library& library;
-    View& view;
-};
-
-void Controller::gui() {
-	int cmd =-1;
-	while (cmd != 0) {
-		while (true) {
-			cmd = atoi(fl_input(view.get_menu().c_str()));
-			if (cmd < 0 || (cmd > 9 && cmd != 99) || cmd == 7 || cmd == 8)
-				fl_message("Invalid command - type 9 for help.");	// TODO modularize input validation
-			else break;
-		}
-		execute_cmd(cmd);
-	}
+// Callbacks
+void CloseCB(Fl_Widget* w, void* p) {
+	win->hide();
 }
 
-void Controller::cli() {
-  int cmd = -1;
-  while (cmd != 0) {
-    cout << view.get_menu() << endl;
-    cout << "Command? ";
-    cin >> cmd;
-    cin.ignore(); // consume \n
-    execute_cmd(cmd);
-  }
-}
-
-int Controller::get_int(string prompt, int max_int) {
-  int result;
-  while(true) {
-    cout << prompt;
-    cin >> result;
-    cin.ignore(); // consume \n
-    if (0 <= result && result <= max_int) break;
-    cout << "Please enter an integer between 0 and " << max_int << endl;
-  }
-  return result;
-}
-
-void Controller::execute_cmd(int cmd) {
-  if (cmd == 1) { // Add publication
-    string title, author, copyright, isbn;
-    int genre, media, age;
-    
-    title = fl_input("Title?");
-
-	author = fl_input("Author?");
-	
-    copyright = fl_input("Copyright date?");
-	
-    while (true) {
-		genre = atoi(fl_input(view.get_genre_list().c_str()));
-		if (genre < 0 || genre >= Genre::num_genres)
-			fl_message("Invalid genre number.");	// TODO modularize input validation
-		else break;
-	}
-
-    while (true) {
-		media = atoi(fl_input(view.get_media_list().c_str()));
-		if (media < 0 || media >= Media::num_media)
-			fl_message("Invalid media number.");	// TODO modularize input validation
-		else break;
-	}
-
-    while (true) {
-		age = atoi(fl_input(view.get_age_list().c_str()));
-		if (age < 0 || age >= Age::num_ages)
-			fl_message("Invalid age number.");	// TODO modularize input validation
-		else break;
-	}
-
-    isbn = fl_input("ISBN?");
-
-    library.add_publication(Publication(title, author, copyright, genre, media, age, isbn));
-
- } else if (cmd == 2) { // List all publications
-    fl_message(view.get_publication_list().c_str());
-
- } else if (cmd == 3) { // Check out publication
-    int pub, pat;
-
-    //cout << view.get_publication_list();
-    //pub = get_int("Publication number? ", library.number_of_publications() - 1);
-    while (true) {
-		pub = atoi(fl_input(view.get_publication_list().c_str()));
-		if (pub < 0 || pub >= library.number_of_publications())
-			fl_message("Invalid publication number.");	// TODO modularize input validation
-		else break;
-	}
-	
-    //cout << view.get_patron_list();
-    //pat = get_int("Patron number? ", library.number_of_patrons() - 1);
-    while (true) {
-		pat = atoi(fl_input(view.get_patron_list().c_str()));
-		if (pat < 0 || pat >= library.number_of_patrons())
-			fl_message("Invalid patron number.");	// TODO modularize input validation
-		else break;
-	}
-
-    try {
-      library.check_out(pub, pat);
-    } catch (Publication::Invalid_transaction e) {
-      fl_message("That publication is not available for check out.");
-    }
-
- } else if (cmd == 4) { // Check in publication
-    int pub;
-    //cout << view.get_publication_list();
-    //pub = get_int("Publication number? ", library.number_of_publications() - 1);
-    while (true) {
-		pub = atoi(fl_input(view.get_publication_list().c_str()));
-		if (pub < 0 || pub >= library.number_of_publications())
-			fl_message("Invalid publication number.");	// TODO modularize input validation
-		else break;
-	}
-
-    try {
-      library.check_in(pub);
-    } catch (Publication::Invalid_transaction e) {
-       fl_message("That publication is not available for check in.");
-    }
-
- } else if (cmd == 5) { // Add patron
-    string name, number;
-
-    name = fl_input("Name?");
-    number = fl_input("Phone number?");
-    
-    library.add_patron(Patron(name, number));
-
- } else if (cmd == 6) { // List all patrons
-    fl_message(view.get_patron_list().c_str());
-
- } else if (cmd == 9) { // Help
-    fl_message(view.get_help().c_str());
- } else if (cmd == 0) { // Exit
- } else if (cmd == 99) { // Easter Egg
-   library.easter_egg();
- } else {
-   fl_message("Invalid command - type 9 for help");
- }
-}
-
-// /////////////////////////////////////
-//               M A I N
-// /////////////////////////////////////
-
-int main() {
-/*
-	Fl_Window *win = new Fl_Window(340,180);
-	Fl_Box *box = new Fl_Box(20,40,300,100,"Hello World!");
-	box->box(FL_UP_BOX);
-	box->labelfont(FL_TIMES);
-	box->labelsize(50);
-	box->labeltype(FL_SHADOW_LABEL);
-	win->end();
-	win->show();
-*/
-	//Library library;
-	View *view = new View{new Library};
-	//Controller controller(library, view);
-	//controller.gui();
-	
-	// Create Window
-	const int X = 640;
-	const int Y = 480;
-	win = new Fl_Window{X, Y, "Menu Stuff"};
-	win->color(FL_WHITE);
-	
-	// Sign up for callbacks
-	win->callback(QuitCB, view);
-	win->callback(AddPublicationCB, view);
-	// Install menu bar
-	menubar = new Fl_Menu_Bar(0,0,X,30);
-	menubar->menu(menuitems);
-	// Show everything
-	win->end();
-	win->show();
-	return(Fl::run());
-	
-}
-
-void AddPublicationCB(Fl_Widget* w, void* view) {
-	View *v = ((View*)(view));
+void AddPubCB(Fl_Widget* w, void* p) {
 	string title, author, copyright, isbn;
     int genre, media, age;
     
@@ -600,21 +351,21 @@ void AddPublicationCB(Fl_Widget* w, void* view) {
     copyright = fl_input("Copyright date?");
 	
     while (true) {
-		genre = atoi(fl_input(v->get_genre_list().c_str()));
+		genre = atoi(fl_input(view->get_genre_list().c_str()));
 		if (genre < 0 || genre >= Genre::num_genres)
 			fl_message("Invalid genre number.");	// TODO modularize input validation
 		else break;
 	}
 
     while (true) {
-		media = atoi(fl_input(v->get_media_list().c_str()));
+		media = atoi(fl_input(view->get_media_list().c_str()));
 		if (media < 0 || media >= Media::num_media)
 			fl_message("Invalid media number.");	// TODO modularize input validation
 		else break;
 	}
 
     while (true) {
-		age = atoi(fl_input(v->get_age_list().c_str()));
+		age = atoi(fl_input(view->get_age_list().c_str()));
 		if (age < 0 || age >= Age::num_ages)
 			fl_message("Invalid age number.");	// TODO modularize input validation
 		else break;
@@ -622,6 +373,126 @@ void AddPublicationCB(Fl_Widget* w, void* view) {
 
     isbn = fl_input("ISBN?");
 
-    v->library->add_publication(Publication(title, author, copyright, genre, media, age, isbn));
+    view->library.add_publication(Publication(title, author, copyright, genre, media, age, isbn));
 }
 
+void ListPubsCB(Fl_Widget* w, void* p) {
+	fl_message(view->get_publication_list().c_str());
+}
+
+void CheckOutCB(Fl_Widget* w, void* p) {
+	int pub, pat;
+
+    //cout << view.get_publication_list();
+    //pub = get_int("Publication number? ", library.number_of_publications() - 1);
+    while (true) {
+		pub = atoi(fl_input(view->get_publication_list().c_str()));
+		if (pub < 0 || pub >= view->library.number_of_publications())
+			fl_message("Invalid publication number.");	// TODO modularize input validation
+		else break;
+	}
+	
+    //cout << view.get_patron_list();
+    //pat = get_int("Patron number? ", library.number_of_patrons() - 1);
+    while (true) {
+		pat = atoi(fl_input(view->get_patron_list().c_str()));
+		if (pat < 0 || pat >= view->library.number_of_patrons())
+			fl_message("Invalid patron number.");	// TODO modularize input validation
+		else break;
+	}
+
+    try {
+      view->library.check_out(pub, pat);
+    } catch (Publication::Invalid_transaction e) {
+      fl_message("That publication is not available for check out.");
+    }
+}
+
+void CheckInCB(Fl_Widget* w, void* p) {
+	int pub;
+    //cout << view.get_publication_list();
+    //pub = get_int("Publication number? ", library.number_of_publications() - 1);
+    while (true) {
+		pub = atoi(fl_input(view->get_publication_list().c_str()));
+		if (pub < 0 || pub >= view->library.number_of_publications())
+			fl_message("Invalid publication number.");	// TODO modularize input validation
+		else break;
+	}
+
+    try {
+      view->library.check_in(pub);
+    } catch (Publication::Invalid_transaction e) {
+       fl_message("That publication is not available for check in.");
+    }
+}
+
+void AddPatCB(Fl_Widget* w, void* p) {
+	string name, number;
+
+    name = fl_input("Name?");
+    number = fl_input("Phone number?");
+    
+    view->library.add_patron(Patron(name, number));
+}
+
+void ListPatsCB(Fl_Widget* w, void* p) {
+	fl_message(view->get_patron_list().c_str());
+}
+
+void HelpCB(Fl_Widget* w, void* p) {
+	fl_message(view->get_help().c_str());
+}
+
+void TestPubsCB(Fl_Widget* w, void* p) {
+	view->library.easter_egg();
+} 
+
+
+
+// Menu
+Fl_Menu_Item menuitems[] = {
+	{ "&File", 0, 0, 0, FL_SUBMENU },
+		{ "&Quit", 0, (Fl_Callback *)CloseCB },
+		{ 0 },
+	{ "&Publication", 0, 0, 0, FL_SUBMENU },
+		{ "&Add", 0, (Fl_Callback *)AddPubCB },
+		{ "&List All", 0, (Fl_Callback *)ListPubsCB },
+		{ "&Check Out", 0, (Fl_Callback *)CheckOutCB },
+		{ "Check &In", 0, (Fl_Callback *)CheckInCB },
+		{ 0 },
+	{ "Pa&tron", 0, 0, 0, FL_SUBMENU },
+		{ "&Add", 0, (Fl_Callback *)AddPatCB },
+		{ "&List All", 0, (Fl_Callback *)ListPatsCB },
+		{ 0 },
+	{ "&Help", 0, 0, 0, FL_SUBMENU },
+		{ "&Get Help", 0, (Fl_Callback *)HelpCB },
+		{ "&Add Test Publications", 0, (Fl_Callback *)TestPubsCB },
+		{ 0 },
+	{ 0 }
+};
+int main() {
+	const int winX = 640;
+	const int winY = 480;
+	
+	// Create a window
+	win = new Fl_Window{winX, winY, "Library Manager"};
+	
+	// Install menu bar
+	menubar = new Fl_Menu_Bar(0, 0, winX, 30);
+	menubar->menu(menuitems);
+	
+	// Create a view
+	Library library;
+	view = new View{library, 0, 30, winX, winY-30};
+	
+	// Sign up for callbacks
+	win->callback(CloseCB, view);
+	
+	// Enable resizing
+	win->resizable(*view);
+	
+	// Wrap it up and let FLTK do its thing
+	win->end();
+	win->show();
+	return(Fl::run());
+}
