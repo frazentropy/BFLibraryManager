@@ -302,7 +302,7 @@ void Library::easter_egg() {
 
 class View {
 public:
-	View(Library& lib) : library(lib) { }
+	View(Library* lib) : library(lib) { }
 		string get_menu();
 		string get_publication_list();
 		string get_patron_list();
@@ -310,7 +310,7 @@ public:
 		string get_genre_list();
 		string get_media_list();
 		string get_help();
-		Library& library;
+		Library* library;
 private:
 };
 
@@ -348,8 +348,8 @@ string View::get_publication_list() {
 List of Library Publications
 ----------------------------
 )";
-  for (int i=0; i<library.number_of_publications(); ++i) {
-    list += std::to_string(i) + ") " + library.publication_to_string(i) + '\n';
+  for (int i=0; i<library->number_of_publications(); ++i) {
+    list += std::to_string(i) + ") " + library->publication_to_string(i) + '\n';
   }
   return list;
 }
@@ -360,8 +360,8 @@ string View::get_patron_list() {
 List of Patrons
 ---------------
 )";
-  for (int i=0; i<library.number_of_patrons(); ++i) {
-    list += std::to_string(i) + ") " + library.patron_to_string(i) + '\n';
+  for (int i=0; i<library->number_of_patrons(); ++i) {
+    list += std::to_string(i) + ") " + library->patron_to_string(i) + '\n';
   }
   return list;
 }
@@ -564,8 +564,8 @@ int main() {
 	win->end();
 	win->show();
 */
-	Library library;
-	View *view = new View{library};
+	//Library library;
+	View *view = new View{new Library};
 	//Controller controller(library, view);
 	//controller.gui();
 	
@@ -589,7 +589,7 @@ int main() {
 }
 
 void AddPublicationCB(Fl_Widget* w, void* view) {
-	//view = ((View*)(view));
+	View *v = ((View*)(view));
 	string title, author, copyright, isbn;
     int genre, media, age;
     
@@ -600,21 +600,21 @@ void AddPublicationCB(Fl_Widget* w, void* view) {
     copyright = fl_input("Copyright date?");
 	
     while (true) {
-		genre = atoi(fl_input(((View*)(view))->get_genre_list().c_str()));
+		genre = atoi(fl_input(v->get_genre_list().c_str()));
 		if (genre < 0 || genre >= Genre::num_genres)
 			fl_message("Invalid genre number.");	// TODO modularize input validation
 		else break;
 	}
 
     while (true) {
-		media = atoi(fl_input(((View*)(view))->get_media_list().c_str()));
+		media = atoi(fl_input(v->get_media_list().c_str()));
 		if (media < 0 || media >= Media::num_media)
 			fl_message("Invalid media number.");	// TODO modularize input validation
 		else break;
 	}
 
     while (true) {
-		age = atoi(fl_input(((View*)(view))->get_age_list().c_str()));
+		age = atoi(fl_input(v->get_age_list().c_str()));
 		if (age < 0 || age >= Age::num_ages)
 			fl_message("Invalid age number.");	// TODO modularize input validation
 		else break;
@@ -622,6 +622,6 @@ void AddPublicationCB(Fl_Widget* w, void* view) {
 
     isbn = fl_input("ISBN?");
 
-    ((View*)(view))->library.add_publication(Publication(title, author, copyright, genre, media, age, isbn));
+    v->library->add_publication(Publication(title, author, copyright, genre, media, age, isbn));
 }
 
